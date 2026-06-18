@@ -54,6 +54,22 @@ describe('EngineFactory', () => {
     );
   });
 
+  it('registers the built-in baileys engine alongside whatsapp-web.js with the opaque config blob', async () => {
+    const registerBuiltInPlugin = jest.fn();
+    const pluginLoader = {
+      registerBuiltInPlugin,
+      enablePlugin: jest.fn().mockResolvedValue(undefined),
+      getPlugin: jest.fn(),
+    } as unknown as PluginLoaderService;
+
+    const factory = new EngineFactory(buildConfigService(), pluginLoader);
+    await factory.onModuleInit();
+
+    const registeredIds = registerBuiltInPlugin.mock.calls.map(call => (call as [{ id: string }])[0].id);
+    expect(registeredIds).toContain('whatsapp-web.js');
+    expect(registeredIds).toContain('baileys');
+  });
+
   it('falls back to the direct adapter when no engine plugin is available', () => {
     const pluginLoader = {
       getPlugin: jest.fn().mockReturnValue(undefined),

@@ -1,6 +1,9 @@
 {
   "name": "openwa",
   "version": "0.2.10",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "description": "Open Source WhatsApp API Gateway - Free, Self-Hosted HTTP API for WhatsApp",
   "author": "Yudhi Armyndharis & OpenWA Contributors",
   "private": true,
@@ -50,6 +53,7 @@
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
+    "@whiskeysockets/baileys": "6.7.23",
     "archiver": "^8.0.0",
     "bullmq": "^5.78.1",
     "class-transformer": "^0.5.1",
@@ -109,6 +113,10 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@whiskeysockets/baileys$": "<rootDir>/../test/__mocks__/@whiskeysockets/baileys.ts",
+      "^@whiskeysockets/baileys/(.*)$": "<rootDir>/../test/__mocks__/@whiskeysockets/baileys.ts"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
