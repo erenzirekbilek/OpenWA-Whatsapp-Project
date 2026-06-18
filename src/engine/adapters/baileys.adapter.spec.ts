@@ -726,6 +726,7 @@ describe('BaileysAdapter contact + chat reads', () => {
 describe('BaileysAdapter sendSeen + deleteChat', () => {
   beforeEach(() => {
     fakeSock.user = { id: '628999:1@s.whatsapp.net', name: 'Me' };
+    fakeSock.resetEmitter();
     jest.clearAllMocks();
   });
 
