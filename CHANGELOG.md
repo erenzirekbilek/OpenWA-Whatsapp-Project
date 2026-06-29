@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.13] - 2026-06-29
+
 ### Fixed
 
 - **Bulk batch ids are unique per session, not globally.** A batch id claimed by one session no longer prevents another session from using the same id — the uniqueness constraint is now scoped to `(session, batchId)`, matching the per-session lookup, so an explicit cross-session reuse no longer fails with a `500`. Reusing an id within the same session is still rejected with a clear `400`. Existing databases are migrated in place. (#531)
