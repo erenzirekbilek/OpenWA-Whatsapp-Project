@@ -4512,6 +4512,8 @@ These are the events OpenWA actually emits. A webhook is registered with an `eve
 | `session.disconnected` | The session disconnects | `{ sessionId, reason }` |
 | `session.status` | The session status transitions | `{ sessionId, status }` where `status` is one of `created` / `initializing` / `qr_ready` / `authenticating` / `ready` / `disconnected` / `failed` |
 
+> **`STORE_EPHEMERAL_MESSAGES=false` affects `message.received`.** When `STORE_EPHEMERAL_MESSAGES` is set to `false`, incoming disappearing messages (those with `ephemeralDuration > 0`) are **not** persisted nor dispatched — no DB insert, no webhook delivery, and no websocket event. Downstream consumers and the dashboard both stop seeing them. Default is `true` (backward compatible — store and dispatch everything).
+
 > **Reserved but not emitted.** `group.join`, `group.leave`, and `group.update` are accepted in a webhook's `events` list (and have reserved idempotency-key formats), but **no code path currently emits them** — registering for them is harmless but they will never be delivered. Likewise there is **no** `contact.update` or `presence.update` event.
 
 ### Delivery semantics — at-least-once

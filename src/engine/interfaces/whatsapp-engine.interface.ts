@@ -69,6 +69,10 @@ export interface IncomingMessage {
    * code can skip these without matching an engine-specific pseudo-JID (e.g. `status@broadcast`).
    */
   isStatusBroadcast?: boolean;
+  /** WhatsApp ephemeral/disappearing-messages timer in seconds. Set per-chat on each message
+   *  in the raw payload. 0 or undefined = no disappearing timer.
+   *  Known values: 86400 (24h), 604800 (7d), 7776000 (90d). */
+  ephemeralDuration?: number;
   /** For group messages, the WID of the participant who actually sent it (`from` is the group JID there). */
   author?: string;
   /** WIDs @mentioned in the message (empty/absent when none). Surfaced for command targeting. */

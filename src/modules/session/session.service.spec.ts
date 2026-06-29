@@ -1188,6 +1188,31 @@ describe('SessionService', () => {
       expect(dispatchedEvents('message.received')).toHaveLength(0);
     });
 
+    it('skips persist and dispatch for ephemeral messages when STORE_EPHEMERAL_MESSAGES=false', async () => {
+      process.env.STORE_EPHEMERAL_MESSAGES = 'false';
+      const callbacks = await startAndCaptureCallbacks();
+      (messageRepository.insert as jest.Mock).mockClear();
+
+      callbacks.onMessage!(makeMessage({ id: 'wa-eph-1', ephemeralDuration: 86400 }));
+      await flush();
+
+      expect(messageRepository.insert).not.toHaveBeenCalled();
+      expect(dispatchedEvents('message.received')).toHaveLength(0);
+      delete process.env.STORE_EPHEMERAL_MESSAGES;
+    });
+
+    it('still persists ephemeral messages when STORE_EPHEMERAL_MESSAGES is unset (default)', async () => {
+      delete process.env.STORE_EPHEMERAL_MESSAGES;
+      const callbacks = await startAndCaptureCallbacks();
+      (messageRepository.insert as jest.Mock).mockClear();
+
+      callbacks.onMessage!(makeMessage({ id: 'wa-eph-2', ephemeralDuration: 86400 }));
+      await flush();
+
+      expect(messageRepository.insert).toHaveBeenCalled();
+      expect(dispatchedEvents('message.received')).toHaveLength(1);
+    });
+
     it('does not process an own-send status echo (type=append) — no dispatch, no WS emit, no DB write', async () => {
       // Regression guard for the WhatsApp Status feature: posting a status produces an own-send echo
       // that Baileys delivers as `messages.upsert` with `type: 'append'` (NOT 'notify'). The adapter's

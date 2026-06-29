@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configurable webhook worker concurrency** (`WEBHOOK_WORKER_CONCURRENCY`, default 10): a single slow or unresponsive receiver no longer head-of-line-blocks delivery for every other webhook. (#511)
 - Dropped a redundant single-column index on `messages(sessionId)` already covered by the existing composite indexes, reducing write-time overhead on a high-volume table. (#509)
 
+- **Selective skip for disappearing messages.** New `STORE_EPHEMERAL_MESSAGES` env var (default `true`). Set to `false` to skip persisting and dispatching incoming disappearing messages (those with `ephemeralDuration > 0`) — no DB insert, no webhook dispatch, no websocket event. Backward compatible; existing deployments are unaffected. The `ephemeralDuration` field is also surfaced on `IncomingMessage` for consumers that want to handle it themselves. Thanks @spidgrou. (#506)
+
 ## [0.7.10] - 2026-06-28
 
 ### Added
