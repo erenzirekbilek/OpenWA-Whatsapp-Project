@@ -24,20 +24,29 @@ export function loadEnvironment(): void {
   const generatedEnvPath = path.resolve(process.cwd(), 'data', '.env.generated');
   const userEnvPath = path.resolve(process.cwd(), '.env');
 
-  // Ensure data directory exists
+  // Ensure data directory exists. On a read-only deployment filesystem (e.g. Vercel's serverless
+  // runtime, where only /tmp is writable) this throws — fall back to process env / .env only and
+  // skip the Dashboard-managed data/.env.generated persistence entirely.
   const dataDir = path.dirname(generatedEnvPath);
+  let dataDirWritable = true;
   if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+    } catch {
+      dataDirWritable = false;
+    }
   }
 
   // Tighten any pre-existing secret files written before per-file 0600 perms (best-effort) — the
   // generated .env holds S3/DB/Redis secrets and .api-key holds the raw admin key.
-  for (const secret of [generatedEnvPath, path.resolve(dataDir, '.api-key')]) {
-    if (fs.existsSync(secret)) {
-      try {
-        fs.chmodSync(secret, 0o600);
-      } catch {
-        /* best-effort */
+  if (dataDirWritable) {
+    for (const secret of [generatedEnvPath, path.resolve(dataDir, '.api-key')]) {
+      if (fs.existsSync(secret)) {
+        try {
+          fs.chmodSync(secret, 0o600);
+        } catch {
+          /* best-effort */
+        }
       }
     }
   }
@@ -59,7 +68,7 @@ export function loadEnvironment(): void {
   if (fs.existsSync(generatedEnvPath)) {
     console.log('[Bootstrap] Loading saved configuration from:', generatedEnvPath);
     dotenv.config({ path: generatedEnvPath, override: false });
-  } else {
+  } else if (dataDirWritable) {
     console.log('[Bootstrap] First run detected, creating default configuration...');
     // Create minimal .env.generated with sensible defaults
     const minimalConfig = `# OpenWA Configuration
@@ -83,9 +92,15 @@ STORAGE_LOCAL_PATH=./data/media
 
 # Docker Profiles: none (minimal setup)
 `;
-    writeSecretFile(generatedEnvPath, minimalConfig);
-    console.log('[Bootstrap] Created default configuration at:', generatedEnvPath);
-    dotenv.config({ path: generatedEnvPath, override: false });
+    try {
+      writeSecretFile(generatedEnvPath, minimalConfig);
+      console.log('[Bootstrap] Created default configuration at:', generatedEnvPath);
+      dotenv.config({ path: generatedEnvPath, override: false });
+    } catch {
+      console.log('[Bootstrap] Data directory is read-only; skipping persisted configuration.');
+    }
+  } else {
+    console.log('[Bootstrap] Data directory is read-only; skipping persisted configuration.');
   }
 }
 
