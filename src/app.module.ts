@@ -91,12 +91,42 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
       validate: validateEnv,
     }),
 
-    // Main Database (always SQLite - boot config)
+    // Main Database (auth/audit) — SQLite by default, Postgres when MAIN_DATABASE_TYPE=postgres
+    // (e.g. required on read-only deployment filesystems such as Vercel).
     TypeOrmModule.forRootAsync({
       name: 'main',
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
+        const dbType = configService.get<'sqlite' | 'postgres'>('database.type', 'sqlite');
+        const entities = [
+          __dirname + '/modules/auth/**/*.entity{.ts,.js}',
+          __dirname + '/modules/audit/**/*.entity{.ts,.js}',
+        ];
+        const logging = configService.get<boolean>('database.logging', false);
+
+        if (dbType === 'postgres') {
+          // No hand-written Postgres migration exists for this connection (migrations-main is
+          // SQLite-specific DDL) — always synchronize from entities instead.
+          return {
+            name: 'main',
+            type: 'postgres' as const,
+            entities,
+            logging,
+            host: configService.get<string>('database.host'),
+            port: configService.get<number>('database.port'),
+            username: configService.get<string>('database.username'),
+            password: configService.get<string>('database.password'),
+            database: configService.get<string>('database.database', 'openwa_main'),
+            ssl: configService.get<boolean>('database.ssl', false)
+              ? { rejectUnauthorized: configService.get<boolean>('database.sslRejectUnauthorized', true) }
+              : false,
+            synchronize: true,
+            retryAttempts: 10,
+            retryDelay: 3000,
+          };
+        }
+
         // Default ON for zero-config first boot. When disabled
         // (MAIN_DATABASE_SYNCHRONIZE=false), the main-owned migrations create the
         // api_keys/audit_logs schema instead — never both at once.
@@ -105,16 +135,13 @@ if (dashboardServingEnabled && dashboardBuildPresent) {
           name: 'main',
           type: 'sqlite' as const,
           database: configService.get<string>('database.database', './data/main.sqlite'),
-          entities: [
-            __dirname + '/modules/auth/**/*.entity{.ts,.js}',
-            __dirname + '/modules/audit/**/*.entity{.ts,.js}',
-          ],
+          entities,
           // Dedicated migrations dir for the main connection only (must NOT run the
           // data-connection migrations, which target session/webhook/message tables).
           migrations: [__dirname + '/database/migrations-main/*{.ts,.js}'],
           synchronize,
           migrationsRun: !synchronize,
-          logging: configService.get<boolean>('database.logging', false),
+          logging,
         };
       },
     }),

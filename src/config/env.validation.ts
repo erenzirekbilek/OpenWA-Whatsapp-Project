@@ -2,7 +2,7 @@ import { resolve } from 'path';
 
 type EnvConfig = Record<string, unknown>;
 
-// The 'main' (auth/audit) connection is always this fixed SQLite file (not env-overridable).
+// The 'main' (auth/audit) connection's default SQLite file when MAIN_DATABASE_TYPE is unset/sqlite.
 const MAIN_DB_PATH = './data/main.sqlite';
 
 /**
@@ -25,6 +25,20 @@ export function validateEnv(config: EnvConfig): EnvConfig {
   const dbType = str('DATABASE_TYPE');
   if (dbType && dbType !== 'sqlite' && dbType !== 'postgres') {
     errors.push(`DATABASE_TYPE must be "sqlite" or "postgres" (got "${dbType}")`);
+  }
+
+  const mainDbType = str('MAIN_DATABASE_TYPE');
+  if (mainDbType && mainDbType !== 'sqlite' && mainDbType !== 'postgres') {
+    errors.push(`MAIN_DATABASE_TYPE must be "sqlite" or "postgres" (got "${mainDbType}")`);
+  }
+  if (mainDbType === 'postgres') {
+    // Falls back to DATABASE_HOST/USERNAME/PASSWORD (configuration.ts) when unset, so only require
+    // MAIN_DATABASE_* explicitly if the data connection isn't already postgres with those set.
+    for (const key of ['HOST', 'USERNAME', 'PASSWORD']) {
+      if (!str(`MAIN_DATABASE_${key}`) && !str(`DATABASE_${key}`)) {
+        errors.push(`MAIN_DATABASE_${key} (or DATABASE_${key}) is required when MAIN_DATABASE_TYPE=postgres`);
+      }
+    }
   }
 
   // Whitelist the registered engine/storage ids so a typo fails fast at boot instead of silently
@@ -79,6 +93,7 @@ export function validateEnv(config: EnvConfig): EnvConfig {
   };
   checkPort('PORT');
   checkPort('DATABASE_PORT');
+  checkPort('MAIN_DATABASE_PORT');
   checkPort('REDIS_PORT');
 
   // Other numeric knobs: a non-integer (e.g. `RATE_LIMIT_SHORT_LIMIT=abc`) parses to NaN downstream,
